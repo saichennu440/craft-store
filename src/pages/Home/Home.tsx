@@ -36,24 +36,31 @@ export const Home: React.FC = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary-50 via-background to-accent-50 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative bg-gradient-to-br from-craft-50 via-background to-craft-100 py-12 sm:py-16 lg:py-20 overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D2691E' fill-opacity='0.6'%3E%3Ccircle cx='30' cy='30' r='3'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Ccircle cx='50' cy='50' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }} />
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl sm:text-6xl font-display font-bold text-gray-900 mb-6"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-bold text-gray-900 mb-4 sm:mb-6"
             >
               Discover Unique
-              <span className="text-primary-600 block">Handmade Crafts</span>
+              <span className="text-primary-600 block">Handcrafted Treasures</span>
             </motion.h1>
             
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto"
+              className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto px-4"
             >
               Each piece tells a story. Support local artisans and bring 
               authentic craftsmanship to your home.
@@ -63,15 +70,15 @@ export const Home: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+              className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4"
             >
               <Link to="/products">
-                <Button size="lg" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto bg-primary-600 hover:bg-primary-700 text-slate-800 font-semibold px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg shadow-lg">
                   Shop Now <ArrowRight className="ml-2" size={20} />
                 </Button>
               </Link>
               <Link to="/about">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-black font-semibold px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg">
                   Learn More
                 </Button>
               </Link>
@@ -81,24 +88,47 @@ export const Home: React.FC = () => {
       </section>
       
       {/* Features Section */}
-      <section className="py-16 bg-white">
+      <section className="py-20 bg-white relative">
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23D2691E' fill-opacity='0.3'%3E%3Cpath d='M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z'/%3E%3C/g%3E%3C/svg%3E")`,
+          }} />
+        </div>
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl font-display font-bold text-gray-900 mb-4">
+              Why Choose <span className="text-primary-600">Craftly</span>?
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              We're more than just a marketplace - we're a community celebrating the art of handmade crafts
+            </p>
+          </motion.div>
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
                 icon: Heart,
                 title: 'Handmade with Love',
-                description: 'Every product is crafted by skilled artisans with passion and attention to detail.'
+                description: 'Every product is crafted by skilled artisans with passion and attention to detail.',
+                color: 'bg-red-100 text-red-600'
               },
               {
                 icon: Shield,
                 title: 'Quality Guaranteed',
-                description: 'We ensure every piece meets our high standards for craftsmanship and durability.'
+                description: 'We ensure every piece meets our high standards for craftsmanship and durability.',
+                color: 'bg-green-100 text-green-600'
               },
               {
                 icon: Truck,
                 title: 'Fast Delivery',
-                description: 'Free shipping on orders above ₹999. Delivered safely to your doorstep.'
+                description: 'Free shipping on orders above ₹999. Delivered safely to your doorstep.',
+                color: 'bg-blue-100 text-blue-600'
               }
             ].map((feature, index) => (
               <motion.div
@@ -106,15 +136,15 @@ export const Home: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.2 }}
-                className="text-center"
+                className="text-center bg-craft-50 p-8 rounded-xl hover:shadow-lg transition-all duration-300 group"
               >
-                <div className="w-16 h-16 mx-auto mb-4 bg-primary-100 rounded-full flex items-center justify-center">
-                  <feature.icon className="text-primary-600" size={32} />
+                <div className={`w-20 h-20 mx-auto mb-6 ${feature.color} rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                  <feature.icon size={36} />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <h3 className="text-2xl font-display font-bold text-gray-900 mb-4">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 leading-relaxed">
                   {feature.description}
                 </p>
               </motion.div>
@@ -124,7 +154,7 @@ export const Home: React.FC = () => {
       </section>
       
       {/* Featured Products */}
-      <section className="py-16 bg-background">
+      <section className="py-20 bg-gradient-to-br from-background via-craft-50 to-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -132,10 +162,10 @@ export const Home: React.FC = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-display font-bold text-gray-900 mb-4">
+            <h2 className="text-4xl font-display font-bold text-gray-900 mb-4">
               Featured Products
             </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Discover our carefully curated selection of handmade treasures
             </p>
           </motion.div>
@@ -169,7 +199,7 @@ export const Home: React.FC = () => {
               className="text-center mt-12"
             >
               <Link to="/products">
-                <Button variant="outline" size="lg">
+                <Button variant="outline" size="lg" className="border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-slate-800 font-semibold px-8 py-4 text-lg">
                   View All Products <ArrowRight className="ml-2" size={20} />
                 </Button>
               </Link>
@@ -179,7 +209,7 @@ export const Home: React.FC = () => {
       </section>
       
       {/* Testimonials */}
-      <section className="py-16 bg-white">
+      <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -187,9 +217,12 @@ export const Home: React.FC = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-display font-bold text-gray-900 mb-4">
+            <h2 className="text-4xl font-display font-bold text-gray-900 mb-4">
               What Our Customers Say
             </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Real stories from our happy customers
+            </p>
           </motion.div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -215,15 +248,15 @@ export const Home: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.2 }}
-                className="bg-background p-6 rounded-lg"
+                className="bg-craft-50 p-8 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300"
               >
                 <div className="flex mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="text-accent-400 fill-current" size={20} />
+                    <Star key={i} className="text-accent-400 fill-current" size={24} />
                   ))}
                 </div>
-                <p className="text-gray-600 mb-4">"{testimonial.comment}"</p>
-                <p className="font-semibold text-gray-900">- {testimonial.name}</p>
+                <p className="text-gray-700 mb-6 text-lg italic">"{testimonial.comment}"</p>
+                <p className="font-bold text-primary-600 text-lg">- {testimonial.name}</p>
               </motion.div>
             ))}
           </div>

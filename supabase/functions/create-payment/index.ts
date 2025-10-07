@@ -92,7 +92,7 @@ serve(async (req: Request) => {
     }
 
     // For sandbox environment, return mock success for testing
-    if (environment === "sandbox") {
+    if (environment === "sandbox" || environment === "development") {
       console.log("Sandbox mode - returning mock payment URL");
       
       return new Response(
@@ -111,7 +111,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // For production, create actual PhonePe payment
+    // For production, create actual PhonePe payment (only when PHONEPE_ENV=production)
     try {
       // Encode payload to base64
       const payloadString = JSON.stringify(paymentPayload);
@@ -126,6 +126,7 @@ serve(async (req: Request) => {
       const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('') + "###" + saltIndex;
 
       console.log("Making request to PhonePe API...");
+      console.log("Environment:", environment, "Base URL:", baseUrl);
 
       // Make request to PhonePe API
       const phonepeResponse = await fetch(`${baseUrl}/pg/v1/pay`, {

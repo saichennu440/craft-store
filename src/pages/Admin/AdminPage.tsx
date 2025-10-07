@@ -67,7 +67,7 @@ export const AdminPage: React.FC = () => {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                       activeTab === tab.id
-                        ? 'bg-primary-600 text-white'
+                        ? 'bg-primary-600 text-black'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >

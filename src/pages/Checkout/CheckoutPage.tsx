@@ -187,7 +187,7 @@ export const CheckoutPage: React.FC = () => {
                   
                   <Button
                     type="submit"
-                    className="w-full mt-6 bg-primary-600 hover:bg-primary-700 text-white"
+                    className="w-full mt-6 bg-primary-600 hover:bg-primary-700 text-slate-800"
                     loading={loading}
                     size="lg"
                   >
@@ -213,29 +213,39 @@ export const CheckoutPage: React.FC = () => {
                 
                 <div className="space-y-4 mb-6">
                   {items.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-4">
-                      <img
-                        src={item.product.images?.[0] || 'https://via.placeholder.com/60x60'}
-                        alt={item.product.title}
-                        className="w-15 h-15 object-cover rounded-md"
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-900 text-sm">
-                          {item.product.title}
-                        </h3>
-                        <p className="text-gray-600 text-sm">
-                          Qty: {item.quantity} × {formatCurrency(item.product.price)}
-                        </p>
-                      </div>
-                      <span className="font-medium">
-                        {formatCurrency(item.product.price * item.quantity)}
-                      </span>
-                    </div>
+                    <div
+  key={item.id}
+  className="flex justify-between items-start border-b border-gray-100 pb-4"
+>
+  <div className="flex items-start space-x-4">
+    <img
+      src={item.product.images?.[0] || 'https://via.placeholder.com/80x80'}
+      alt={item.product.title}
+      className="w-20 h-20 object-cover rounded-md border"
+    />
+    <div className="flex flex-col justify-between">
+      <h3 className="font-semibold text-gray-900 text-base leading-tight">
+        {item.product.title}
+      </h3>
+      <p className="text-gray-600 text-sm mt-1">
+        Qty: {item.quantity} × {formatCurrency(item.product.price)}
+      </p>
+    </div>
+  </div>
+
+  <div className="text-right min-w-[80px]">
+    <span className="font-semibold text-gray-900 text-base">
+      {formatCurrency(item.product.price * item.quantity)}
+    </span>
+  </div>
+</div>
+
                   ))}
                 </div>
                 
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
+                    
                     <span className="text-gray-600">Subtotal</span>
                     <span className="font-medium">{formatCurrency(totalPrice)}</span>
                   </div>

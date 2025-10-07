@@ -11,7 +11,7 @@ export const Footer: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">C</span>
+                {/* <span className="text-white font-bold text-lg">C</span> */}
               </div>
               <span className="text-xl font-display font-bold">
                 {import.meta.env.VITE_APP_NAME || 'Craftly'}
@@ -37,6 +37,9 @@ export const Footer: React.FC = () => {
               </Link>
               <Link to="/contact" className="block text-gray-400 hover:text-white transition-colors">
                 Contact
+              </Link>
+              <Link to="/privacy" className="block text-gray-400 hover:text-white transition-colors">
+                Privacy Policy
               </Link>
             </div>
           </div>

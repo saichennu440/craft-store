@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { ShoppingCart, Heart } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
+import { ProductImageSlider } from './ProductImageSlider'
 import { useCartStore } from '../../store/cartStore'
 import { formatCurrency } from '../../lib/utils'
 import type { Product } from '../../types/database'
@@ -23,8 +24,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     toast.success('Added to cart!')
   }
   
-  const primaryImage = product.images?.[0] || 'https://via.placeholder.com/300x300?text=No+Image'
-  
   return (
     <Link to={`/product/${product.slug}`}>
       <Card hover className="overflow-hidden group">
@@ -34,17 +33,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           className="relative"
         >
           {/* Image */}
-          <div className="aspect-square overflow-hidden">
-            <img
-              src={primaryImage}
-              alt={product.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
+          <div className="aspect-square overflow-hidden relative">
+            <ProductImageSlider images={product.images || []} title={product.title} />
+            <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-300" />
           </div>
           
           {/* Actions Overlay */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <div className="flex space-x-2">
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+            <div className="flex space-x-2 pointer-events-auto">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
@@ -66,7 +62,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           
           {/* Stock Badge */}
           {product.stock === 0 && (
-            <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+            <div className="absolute top-2 right-2 bg-red-500 text-slate-800 px-2 py-1 rounded-full text-xs font-medium">
               Out of Stock
             </div>
           )}
@@ -81,10 +77,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             {product.description}
           </p>
           <div className="flex items-center justify-between">
-            <span className="text-xl font-bold text-primary-600">
+            <span className="text-xl font-bold text-primary-600 text-slate-800">
               {formatCurrency(product.price)}
             </span>
-            <motion.div whileHover={{ scale: 1.05 }}>
+            {/* <motion.div whileHover={{ scale: 1.05 }}>
               <Button
                 size="sm"
                 onClick={handleAddToCart}
@@ -92,7 +88,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               >
                 Add to Cart
               </Button>
-            </motion.div>
+            </motion.div> */}
           </div>
         </div>
       </Card>

@@ -211,7 +211,7 @@ export const CartPage: React.FC = () => {
                   
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                     <Button
-                      className="w-full mt-6 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-3 shadow-lg"
+                      className="w-full mt-6 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-slate-800 font-semibold py-3 shadow-lg"
                       size="lg"
                       onClick={handleCheckout}
                     >

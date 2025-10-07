@@ -8,6 +8,12 @@ import { formatCurrency, formatDate } from '../../lib/utils'
 import type { Order } from '../../types/database'
 
 interface OrderWithItems extends Order {
+  id: Key | null | undefined
+  created_at(created_at: any): React.ReactNode
+  status(status: any): React.ReactNode
+  phone: ReactNode
+  address: ReactNode
+  total_amount(total_amount: any): React.ReactNode
   order_items: Array<{
     id: string
     quantity: number
@@ -171,23 +177,31 @@ export const OrdersPage: React.FC = () => {
                     <div className="border-t pt-4">
                       <div className="space-y-3">
                         {order.order_items.map((item) => (
-                          <div key={item.id} className="flex items-center space-x-4">
-                            <img
-                              src={item.products.images?.[0] || 'https://via.placeholder.com/60x60'}
-                              alt={item.products.title}
-                              className="w-15 h-15 object-cover rounded-md"
-                            />
-                            <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">
-                                {item.products.title}
-                              </h4>
-                              <p className="text-gray-600 text-sm">
-                                Qty: {item.quantity} × {formatCurrency(item.price)}
-                              </p>
+                          <div 
+                            key={item.id}
+                            className="flex justify-between items-start border-b border-gray-100 pb-4"
+                          >
+                            <div className="flex items-start space-x-4">
+                              <img
+                                src={item.products.images?.[0] || 'https://via.placeholder.com/80x80'}
+                                alt={item.products.title}
+                                className="w-20 h-20 object-cover rounded-md border"
+                              />
+                              <div className="flex flex-col justify-between">
+                                <h3 className="font-semibold text-gray-900 text-base leading-tight">
+                                  {item.products.title}
+                                </h3>
+                                <p className="text-gray-600 text-sm mt-1">
+                                  Qty: {item.quantity} × {formatCurrency(item.price)}
+                                </p>
+                              </div>
                             </div>
-                            <span className="font-medium">
-                              {formatCurrency(item.price * item.quantity)}
-                            </span>
+                          
+                            <div className="text-right min-w-[80px]">
+                              <span className="font-semibold text-gray-900 text-base">
+                                {formatCurrency(item.price * item.quantity)}
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>

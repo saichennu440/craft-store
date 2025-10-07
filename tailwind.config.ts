@@ -12,7 +12,7 @@ export default {
           300: '#c4b5fd',
           400: '#a78bfa',
           500: '#8b5cf6',
-          600: '#6D28D9', // Main primary color
+          600: '#8B4513', // Saddle Brown - earthy craft color
           700: '#5b21b6',
           800: '#4c1d95',
           900: '#3c1361',
@@ -23,14 +23,26 @@ export default {
           100: '#ffedd5',
           200: '#fed7aa',
           300: '#fdba74',
-          400: '#FB923C', // Main accent color
+          400: '#D2691E', // Chocolate - warm craft accent
           500: '#f97316',
           600: '#ea580c',
           700: '#c2410c',
           800: '#9a3412',
           900: '#7c2d12',
         },
-        background: '#F8FAFC',
+        craft: {
+          50: '#fdf8f6',
+          100: '#f2e8e5',
+          200: '#eaddd7',
+          300: '#e0cfc5',
+          400: '#d2bab0',
+          500: '#bfa094',
+          600: '#a18072',
+          700: '#977669',
+          800: '#846358',
+          900: '#43302b',
+        },
+        background: '#FDF8F6', // Warm cream background
         card: '#FFFFFF',
         muted: '#64748B',
       },

@@ -5,8 +5,12 @@ import { Header } from './components/Layout/Header'
 import { Footer } from './components/Layout/Footer'
 import { Home } from './pages/Home/Home'
 import { ProductsPage } from './pages/Products/ProductsPage'
+import { ProductDetailPage } from './pages/Products/ProductDetailPage'
 import { CartPage } from './pages/Cart/CartPage'
 import { AuthPage } from './pages/Auth/AuthPage'
+import { AboutPage } from './pages/About/AboutPage'
+import { ContactPage } from './pages/Contact/ContactPage'
+import { PrivacyPage } from './pages/Privacy/PrivacyPage'
 import { CheckoutPage } from './pages/Checkout/CheckoutPage'
 import { PaymentSuccess } from './pages/Payment/PaymentSuccess'
 import { PaymentFailure } from './pages/Payment/PaymentFailure'
@@ -29,8 +33,12 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/products" element={<ProductsPage />} />
+            <Route path="/product/:slug" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />

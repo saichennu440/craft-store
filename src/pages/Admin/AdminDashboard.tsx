@@ -149,7 +149,7 @@ export const AdminDashboard: React.FC = () => {
                     <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                   </div>
                   <div className={`p-3 rounded-full ${stat.color}`}>
-                    <stat.icon className="text-white" size={24} />
+                    <stat.icon className="text-black" size={24} />
                   </div>
                 </div>
                 <div className="mt-4 flex items-center">

@@ -171,6 +171,7 @@ export interface User extends Database['public']['Tables']['users']['Row'] {
     created_at(created_at: any): import("react").ReactNode;
 }
 export interface Product extends Database['public']['Tables']['products']['Row'] {
+  slug: any
   is_published: any
   title: any
   description: any
