@@ -26,7 +26,7 @@ export const Header: React.FC = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-              <span className="text-black font-bold text-base sm:text-lg">C2C</span>
+              <span className="text-red-600 font-bold text-base sm:text-lg">C2C</span>
             </div>
             <span className="text-lg sm:text-xl font-display font-bold text-gray-900">
               {import.meta.env.VITE_APP_NAME || 'Clay 2 Crafts'}
