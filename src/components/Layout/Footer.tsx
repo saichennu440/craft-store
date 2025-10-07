@@ -38,28 +38,20 @@ export const Footer: React.FC = () => {
               <Link to="/contact" className="block text-gray-400 hover:text-white transition-colors">
                 Contact
               </Link>
-              <Link to="/privacy" className="block text-gray-400 hover:text-white transition-colors">
-                Privacy Policy
-              </Link>
+             
             </div>
           </div>
           
           {/* Categories */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Categories</h3>
+            <h3 className="text-lg font-semibold mb-4">Policies</h3>
             <div className="space-y-2">
-              <a href="#" className="block text-gray-400 hover:text-white transition-colors">
-                Home Decor
-              </a>
-              <a href="#" className="block text-gray-400 hover:text-white transition-colors">
-                Jewelry
-              </a>
-              <a href="#" className="block text-gray-400 hover:text-white transition-colors">
-                Pottery
-              </a>
-              <a href="#" className="block text-gray-400 hover:text-white transition-colors">
-                Textiles
-              </a>
+              <Link to="/privacy" className="block text-gray-400 hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+               <Link to="/terms" className="block text-gray-400 hover:text-white transition-colors">
+                Terms and Conditions
+              </Link>
             </div>
           </div>
           
@@ -69,15 +61,15 @@ export const Footer: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center space-x-2 text-gray-400">
                 <Mail size={16} />
-                <span>hello@craftly.com</span>
+                <span>hello@c2c.info</span>
               </div>
-              <div className="flex items-center space-x-2 text-gray-400">
+              {/* <div className="flex items-center space-x-2 text-gray-400">
                 <Phone size={16} />
                 <span>+91 98765 43210</span>
-              </div>
+              </div> */}
               <div className="flex items-center space-x-2 text-gray-400">
                 <MapPin size={16} />
-                <span>Mumbai, India</span>
+                <span>Hyderabad, India</span>
               </div>
             </div>
           </div>

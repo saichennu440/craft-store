@@ -78,7 +78,7 @@ export const Home: React.FC = () => {
                 </Button>
               </Link>
               <Link to="/about">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-black font-semibold px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-slate-900 font-semibold px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg">
                   Learn More
                 </Button>
               </Link>

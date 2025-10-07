@@ -11,6 +11,7 @@ import { AuthPage } from './pages/Auth/AuthPage'
 import { AboutPage } from './pages/About/AboutPage'
 import { ContactPage } from './pages/Contact/ContactPage'
 import { PrivacyPage } from './pages/Privacy/PrivacyPage'
+import { TermsPage } from './pages/Term/TermsPage'
 import { CheckoutPage } from './pages/Checkout/CheckoutPage'
 import { PaymentSuccess } from './pages/Payment/PaymentSuccess'
 import { PaymentFailure } from './pages/Payment/PaymentFailure'
@@ -39,6 +40,7 @@ function App() {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />

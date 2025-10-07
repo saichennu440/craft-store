@@ -37,7 +37,7 @@ export const PrivacyPage: React.FC = () => {
             transition={{ delay: 0.4 }}
             className="text-sm text-gray-500"
           >
-            Last updated: January 15, 2025
+            Last updated: August 15, 2025
           </motion.div>
         </div>
       </section>
