@@ -54,6 +54,11 @@ export const TermsPage: React.FC = () => {
             <div className="bg-primary-50 p-2 rounded-lg mb-8">
               <div className="flex items-center mb-4">
                 <Shield className="text-primary-600 mr-4" size={24} />
+                <h2 className="text-xl font-semibold text-gray-900">Shipping Policy</h2>
+              </div>
+                   <p className="text-gray-700 leading-relaxed">Our products will be delivered with in 5 -7 working days.</p><br/>
+              <div className="flex items-center mb-4">
+                <Shield className="text-primary-600 mr-4" size={24} />
                 <h2 className="text-xl font-semibold text-gray-900">Our Commitment</h2>
               </div>
               <p className="text-gray-700 leading-relaxed">
