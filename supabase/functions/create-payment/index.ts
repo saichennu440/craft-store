@@ -6,7 +6,8 @@
   and returns the payment URL for redirection.
 */
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @deno-types="https://deno.land/x/types/react/index.d.ts"
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 
 const corsHeaders = {
@@ -45,36 +46,30 @@ serve(async (req: Request) => {
     }
 
     // PhonePe configuration
-    const merchantId = Deno.env.get("PHONEPE_MERCHANT_ID") ?? "PGTESTPAYUAT";
-    const saltKey = Deno.env.get("PHONEPE_SECRET") ?? "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399";
+    const merchantId = Deno.env.get("PHONEPE_MERCHANT_ID") ?? "";
+    const saltKey = Deno.env.get("PHONEPE_SECRET") ?? "";
     const saltIndex = "1";
     const environment = Deno.env.get("PHONEPE_ENV") ?? "sandbox";
+    
+    console.log("PhonePe Environment from env:", environment);
+    console.log("Merchant ID:", merchantId);
+    console.log("Salt Key (first 10 chars):", saltKey.substring(0, 10));
+    
+    // Validate production credentials
+    if (environment === "production") {
+      if (!merchantId || !saltKey) {
+        throw new Error("Production PhonePe credentials not configured");
+      }
+      if (merchantId === "PGTESTPAYUAT" || saltKey === "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399") {
+        throw new Error("Cannot use test credentials in production mode");
+      }
+    }
+    
+    console.log("Environment check - is production?", environment === "production");
     
     // Generate unique transaction ID
     const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     
-    // PhonePe API endpoints
-    const baseUrl = environment === "production" 
-      ? "https://api.phonepe.com/apis/hermes"
-      : "https://api-preprod.phonepe.com/apis/pg-sandbox";
-
-    // Create payment payload
-    const paymentPayload = {
-      merchantId: merchantId,
-      merchantTransactionId: transactionId,
-      merchantUserId: `USER_${Date.now()}`,
-      amount: Math.round(amount * 100), // Convert to paise and ensure integer
-      redirectUrl: `${callbackUrl}/payment/success?transactionId=${transactionId}`,
-      redirectMode: "REDIRECT",
-      callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/verify-payment`,
-      mobileNumber: phone,
-      paymentInstrument: {
-        type: "PAY_PAGE"
-      }
-    };
-
-    console.log("Payment payload:", JSON.stringify(paymentPayload, null, 2));
-
     // Store payment record first
     const { error: dbError } = await supabase
       .from("payments")
@@ -91,16 +86,21 @@ serve(async (req: Request) => {
       throw new Error("Failed to create payment record");
     }
 
-    // For sandbox environment, return mock success for testing
-    if (environment === "sandbox" || environment === "development") {
-      console.log("Sandbox mode - returning mock payment URL");
+    console.log("Payment record created successfully");
+
+    // Check if we should use test mode
+    const isTestMode = environment !== "production";
+    console.log("Using test mode?", isTestMode);
+    
+    if (isTestMode) {
+      console.log("Test mode - returning mock payment URL");
       
       return new Response(
         JSON.stringify({
           success: true,
           paymentUrl: `${callbackUrl}/payment/success?transactionId=${transactionId}&status=SUCCESS`,
           transactionId: transactionId,
-          message: "Payment created successfully (sandbox mode)"
+          message: "Payment created successfully (test mode)"
         }),
         {
           headers: {
@@ -111,8 +111,30 @@ serve(async (req: Request) => {
       );
     }
 
-    // For production, create actual PhonePe payment (only when PHONEPE_ENV=production)
+    // Production PhonePe payment integration
+    console.log("Creating production PhonePe payment...");
+    
     try {
+      // PhonePe API endpoints
+      const baseUrl = "https://api.phonepe.com/apis/hermes";
+
+      // Create payment payload
+      const paymentPayload = {
+        merchantId: merchantId,
+        merchantTransactionId: transactionId,
+        merchantUserId: `USER_${Date.now()}`,
+        amount: Math.round(amount * 100), // Convert to paise
+        redirectUrl: `${callbackUrl}/payment/success?transactionId=${transactionId}`,
+        redirectMode: "REDIRECT",
+        callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/verify-payment`,
+        mobileNumber: phone,
+        paymentInstrument: {
+          type: "PAY_PAGE"
+        }
+      };
+
+      console.log("Payment payload:", JSON.stringify(paymentPayload, null, 2));
+
       // Encode payload to base64
       const payloadString = JSON.stringify(paymentPayload);
       const payloadBase64 = btoa(payloadString);
@@ -125,8 +147,10 @@ serve(async (req: Request) => {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('') + "###" + saltIndex;
 
-      console.log("Making request to PhonePe API...");
-      console.log("Environment:", environment, "Base URL:", baseUrl);
+      console.log("PhonePe API Request Details:");
+      console.log("- Base URL:", baseUrl);
+      console.log("- Payload (first 100 chars):", payloadString.substring(0, 100));
+      console.log("- Signature (first 20 chars):", signature.substring(0, 20));
 
       // Make request to PhonePe API
       const phonepeResponse = await fetch(`${baseUrl}/pg/v1/pay`, {
@@ -143,7 +167,7 @@ serve(async (req: Request) => {
       const phonepeData = await phonepeResponse.json();
       console.log("PhonePe response:", phonepeData);
 
-      if (phonepeData.success) {
+      if (phonepeData.success && phonepeData.data?.instrumentResponse?.redirectInfo?.url) {
         return new Response(
           JSON.stringify({
             success: true,
@@ -158,14 +182,15 @@ serve(async (req: Request) => {
           }
         );
       } else {
-        throw new Error(phonepeData.message || "Payment creation failed");
+        console.error("PhonePe API Error:", phonepeData);
+        throw new Error(phonepeData.message || phonepeData.code || "Payment creation failed");
       }
-    } catch (phonepeError) {
+    } catch (phonepeError: any) {
       console.error("PhonePe API error:", phonepeError);
-      throw new Error("PhonePe API request failed");
+      throw new Error(`PhonePe API request failed: ${phonepeError.message}`);
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Payment creation error:", error);
     
     return new Response(

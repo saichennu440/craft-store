@@ -17,6 +17,9 @@ export interface PaymentResponse {
 export const createPayment = async (paymentData: PaymentRequest): Promise<PaymentResponse> => {
   try {
     console.log('Creating payment with data:', paymentData)
+    console.log('Environment variables check:')
+    console.log('- VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL?.substring(0, 30) + '...')
+    console.log('- PHONEPE_ENV from client:', import.meta.env.PHONEPE_ENV)
     
     const { data, error } = await supabase.functions.invoke('create-payment', {
       body: paymentData
@@ -73,7 +76,7 @@ export const verifyPayment = async (transactionId: string, merchantTransactionId
 
 // PhonePe UPI Intent helper
 export const openPhonePeUPI = (transactionId: string, amount: number, merchantId: string) => {
-  const upiString = `upi://pay?pa=${merchantId}@ybl&pn=Clay 2 Crafts&tr=${transactionId}&am=${amount}&cu=INR`
+  const upiString = `upi://pay?pa=${merchantId}@ybl&pn=Craftly&tr=${transactionId}&am=${amount}&cu=INR`
   
   // For mobile devices, try to open UPI app
   if (/Android|iPhone/i.test(navigator.userAgent)) {
