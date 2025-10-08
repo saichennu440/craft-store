@@ -79,8 +79,8 @@ export const PaymentFailure: React.FC = () => {
         >
           <p className="text-gray-500 text-sm">
             Need help? Contact our support team at{' '}
-            <a href="mailto:support@craftly.com" className="text-primary-600 hover:underline">
-              support@craftly.com
+            <a href="mailto:support@Clay 2 Crafts.com" className="text-primary-600 hover:underline">
+              support@Clay 2 Crafts.com
             </a>
           </p>
         </motion.div>

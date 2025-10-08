@@ -73,7 +73,7 @@ export const verifyPayment = async (transactionId: string, merchantTransactionId
 
 // PhonePe UPI Intent helper
 export const openPhonePeUPI = (transactionId: string, amount: number, merchantId: string) => {
-  const upiString = `upi://pay?pa=${merchantId}@ybl&pn=Craftly&tr=${transactionId}&am=${amount}&cu=INR`
+  const upiString = `upi://pay?pa=${merchantId}@ybl&pn=Clay 2 Crafts&tr=${transactionId}&am=${amount}&cu=INR`
   
   // For mobile devices, try to open UPI app
   if (/Android|iPhone/i.test(navigator.userAgent)) {

@@ -1,7 +1,7 @@
 # Payment Flow Documentation
 
 ## Overview
-This document explains the complete payment processing flow using PhonePe integration in the Craftly e-commerce platform.
+This document explains the complete payment processing flow using PhonePe integration in the Clay 2 Crafts e-commerce platform.
 
 ## Architecture
 
@@ -227,4 +227,4 @@ if (debug) {
 
 ---
 
-This payment system provides a robust, secure, and scalable solution for processing payments in the Craftly e-commerce platform.
+This payment system provides a robust, secure, and scalable solution for processing payments in the Clay 2 Crafts e-commerce platform.

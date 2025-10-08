@@ -57,7 +57,7 @@ export const PrivacyPage: React.FC = () => {
                 <h2 className="text-xl font-semibold text-gray-900">Our Commitment</h2>
               </div>
               <p className="text-gray-700">
-                At Craftly, we are committed to protecting your privacy and ensuring the security 
+                At Clay 2 Crafts, we are committed to protecting your privacy and ensuring the security 
                 of your personal information. This Privacy Policy explains how we collect, use, 
                 disclose, and safeguard your information when you use our platform.
               </p>
@@ -205,7 +205,7 @@ export const PrivacyPage: React.FC = () => {
               please don't hesitate to contact us.
             </p>
             <div className="space-y-2">
-              <p className="text-primary-600 font-medium">privacy@craftly.com</p>
+              <p className="text-primary-600 font-medium">privacy@Clay 2 Crafts.com</p>
               <p className="text-gray-600">+91 98765 43210</p>
               <p className="text-gray-600">Mumbai, Maharashtra, India</p>
             </div>

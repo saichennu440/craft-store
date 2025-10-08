@@ -36,9 +36,9 @@ export const Home: React.FC = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-craft-50 via-background to-craft-100 py-12 sm:py-16 lg:py-20 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-craft-50 via-background to-craft-100 py-12 sm:py-16 lg:py-28 ">
         {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-1 opacity-15">
           <div className="absolute inset-0" style={{
             backgroundImage: `url("/c2c.jpg")`,
           }} />
@@ -78,7 +78,7 @@ export const Home: React.FC = () => {
                 </Button>
               </Link>
               <Link to="/about">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-slate-900 font-semibold px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg">
+                <Button  size="lg" className="w-full sm:w-auto border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-slate-900 font-semibold px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg">
                   Learn More
                 </Button>
               </Link>
@@ -103,7 +103,7 @@ export const Home: React.FC = () => {
             className="text-center mb-16"
           >
             <h2 className="text-4xl font-display font-bold text-gray-900 mb-4">
-              Why Choose <span className="text-primary-600">Craftly</span>?
+              Why Choose <span className="text-primary-600">Clay 2 Crafts</span>?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               We're more than just a marketplace - we're a community celebrating the art of handmade crafts

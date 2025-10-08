@@ -19,7 +19,7 @@ export const AboutPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl sm:text-6xl font-display font-bold text-gray-900 mb-6"
           >
-            About <span className="text-primary-600">Craftly</span>
+            About <span className="text-primary-600">Clay 2 Crafts</span>
           </motion.h1>
           
           <motion.p
@@ -44,7 +44,7 @@ export const AboutPage: React.FC = () => {
             <h2 className="text-3xl font-display font-bold text-gray-900 mb-6">Our Story</h2>
             <div className="prose prose-lg mx-auto text-gray-600">
               <p>
-                Founded in 2023, Craftly began as a passion project to bridge the gap between 
+                Founded in 2023, Clay 2 Crafts began as a passion project to bridge the gap between 
                 talented artisans and people who appreciate authentic, handmade crafts. We believe 
                 that every handcrafted item tells a story – of tradition, skill, creativity, and love.
               </p>
@@ -68,7 +68,7 @@ export const AboutPage: React.FC = () => {
           >
             <h2 className="text-3xl font-display font-bold text-gray-900 mb-4">Our Values</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              These core values guide everything we do at Craftly
+              These core values guide everything we do at Clay 2 Crafts
             </p>
           </motion.div>
           

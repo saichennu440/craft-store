@@ -14,7 +14,7 @@ export const Footer: React.FC = () => {
                 {/* <span className="text-white font-bold text-lg">C</span> */}
               </div>
               <span className="text-xl font-display font-bold">
-                {import.meta.env.VITE_APP_NAME || 'Craftly'}
+                {import.meta.env.VITE_APP_NAME || 'Clay 2 Crafts'}
               </span>
             </div>
             <p className="text-gray-400">
@@ -82,7 +82,7 @@ export const Footer: React.FC = () => {
             <span>for crafters everywhere</span>
           </p>
           <p className="text-gray-500 mt-2">
-            © 2025 {import.meta.env.VITE_APP_NAME || 'Craftly'}. All rights reserved.
+            © 2025 {import.meta.env.VITE_APP_NAME || 'Clay 2 Crafts'}. All rights reserved.
           </p>
         </div>
       </div>

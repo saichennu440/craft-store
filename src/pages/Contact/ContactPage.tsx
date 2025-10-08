@@ -87,7 +87,7 @@ export const ContactPage: React.FC = () => {
                   {
                     icon: Mail,
                     title: 'Email Us',
-                    content: 'hello@craftly.com',
+                    content: 'hello@Clay 2 Crafts.com',
                     description: 'Send us an email anytime'
                   },
                   {
@@ -227,7 +227,7 @@ export const ContactPage: React.FC = () => {
               },
               {
                 question: 'How can I become an artisan partner?',
-                answer: 'Contact us through this form or email us at partners@craftly.com with samples of your work and your story.'
+                answer: 'Contact us through this form or email us at partners@Clay 2 Crafts.com with samples of your work and your story.'
               }
             ].map((faq, index) => (
               <motion.div

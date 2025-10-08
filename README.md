@@ -1,4 +1,4 @@
-# Craftly - Handmade Crafts E-Commerce Store
+# Clay 2 Crafts - Handmade Crafts E-Commerce Store
 
 A complete e-commerce solution for selling handmade crafts, built with React, TypeScript, Tailwind CSS, and Supabase.
 
@@ -47,7 +47,7 @@ A complete e-commerce solution for selling handmade crafts, built with React, Ty
 1. **Clone the repository**
    ```bash
    git clone <your-repo-url>
-   cd craftly-ecommerce
+   cd Clay 2 Crafts-ecommerce
    ```
 
 2. **Install dependencies**
@@ -136,7 +136,7 @@ For **Production**:
 ## 🗂️ Project Structure
 
 ```
-craftly-ecommerce/
+Clay 2 Crafts-ecommerce/
 ├── src/
 │   ├── components/          # Reusable UI components
 │   │   ├── ui/             # Basic UI components (Button, Input, etc.)
@@ -269,7 +269,7 @@ MIT License - see LICENSE file for details
 
 ## 🆘 Support
 
-- 📧 Email: support@craftly.com
+- 📧 Email: support@Clay 2 Crafts.com
 - 📖 Documentation: [Link to detailed docs]
 - 🐛 Issues: [GitHub Issues](link-to-issues)
 

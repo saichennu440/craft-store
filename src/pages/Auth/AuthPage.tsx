@@ -84,7 +84,7 @@ export const AuthPage: React.FC = () => {
               <p className="text-gray-600 mt-2">
                 {isSignUp 
                   ? 'Join our community of craft lovers'
-                  : 'Welcome back to Craftly'
+                  : 'Welcome back to Clay 2 Crafts'
                 }
               </p>
             </div>
