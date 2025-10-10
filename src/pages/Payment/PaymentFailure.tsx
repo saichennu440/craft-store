@@ -8,13 +8,7 @@ import { Card } from '../../components/ui/Card'
 export const PaymentFailure: React.FC = () => {
   const [searchParams] = useSearchParams()
   const error = searchParams.get('error') || 'Payment was cancelled or failed'
-  <p className="text-gray-600 mb-8">
-  {decodeURIComponent(error)}. Don't worry, no charges were made to your account.
-</p>
-...
-<a href="mailto:support@clay2crafts.com" className="text-primary-600 hover:underline">
-  support@clay2crafts.com
-</a>
+  
   return (
     <div className="min-h-screen bg-background py-12">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
