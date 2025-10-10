@@ -175,7 +175,7 @@ serve(async (req: Request) => {
         paymentFlow: {
           type: "PG_CHECKOUT",
           merchantUrls: {
-            redirectUrl: `${callbackUrl}/payment/success?transactionId=${transactionId}`
+            redirectUrl: `${callbackUrl}/payment/result?transactionId=${transactionId}`
           }
         },
         metaInfo: {
@@ -212,7 +212,7 @@ serve(async (req: Request) => {
         merchantTransactionId: transactionId,
         merchantUserId: `USER_${Date.now()}`,
         amount: amountPaise,
-        redirectUrl: `${callbackUrl}/payment/success?transactionId=${transactionId}`,
+        redirectUrl: `${callbackUrl}/payment/result?transactionId=${transactionId}`,
         redirectMode: "REDIRECT",
         callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/verify-payment?transactionId=${transactionId}`,
         mobileNumber,

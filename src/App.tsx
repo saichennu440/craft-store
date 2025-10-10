@@ -15,6 +15,7 @@ import { PrivacyPage } from './pages/Privacy/PrivacyPage'
 import { CheckoutPage } from './pages/Checkout/CheckoutPage'
 import { PaymentSuccess } from './pages/Payment/PaymentSuccess'
 import { PaymentFailure } from './pages/Payment/PaymentFailure'
+import { PaymentResult } from "./pages/payment/PaymentResult";
 import { OrdersPage } from './pages/Orders/OrdersPage'
 import { AdminPage } from './pages/Admin/AdminPage'
 import { WishlistPage } from './pages/Wishlist/WishlistPage'
@@ -45,6 +46,7 @@ function App() {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/result" element={<PaymentResult />} />
             <Route path="/payment/failure" element={<PaymentFailure />} />
             <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/admin" element={<AdminPage />} />
