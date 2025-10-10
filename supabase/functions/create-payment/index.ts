@@ -10,9 +10,79 @@ const corsHeaders = {
 
 interface PaymentRequest {
   orderId: string;
-  amount: number;
+  amount: number | string;
   phone: string;
   callbackUrl: string;
+}
+
+let TOKEN_CACHE: { token?: string; expiresAt?: number } = {};
+
+async function fetchPhonePeToken() {
+  if (TOKEN_CACHE.token && TOKEN_CACHE.expiresAt && Date.now() < TOKEN_CACHE.expiresAt - 5000) {
+    return { ok: true, token: TOKEN_CACHE.token, cached: true };
+  }
+
+  const phonepeBase = Deno.env.get("PHONEPE_BASE_URL") ?? "https://api.phonepe.com/apis/pg";
+  const explicitAuthUrl = Deno.env.get("PHONEPE_AUTH_URL") ?? "";
+  const candidateUrls: string[] = [];
+  if (explicitAuthUrl) candidateUrls.push(explicitAuthUrl);
+  candidateUrls.push("https://api.phonepe.com/apis/identity-manager/v1/oauth/token");
+  candidateUrls.push("https://api-preprod.phonepe.com/apis/pg-sandbox/v1/oauth/token");
+  candidateUrls.push(`${phonepeBase.replace(/\/$/, "")}/v1/oauth/token`);
+
+  const clientId = Deno.env.get("PHONEPE_CLIENT_ID") ?? "";
+  const clientSecret = Deno.env.get("PHONEPE_CLIENT_SECRET") ?? "";
+  const clientVersion = Deno.env.get("PHONEPE_CLIENT_VERSION") ?? "1.0";
+
+  if (!clientId || !clientSecret) {
+    return { ok: false, error: "PHONEPE_CLIENT_ID or PHONEPE_CLIENT_SECRET missing" };
+  }
+
+  const attempts: any[] = [];
+
+  for (const url of candidateUrls) {
+    try {
+      const params = new URLSearchParams();
+      params.set("client_id", clientId);
+      params.set("client_secret", clientSecret);
+      params.set("client_version", clientVersion);
+      params.set("grant_type", "client_credentials");
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      });
+
+      const text = await resp.text();
+      let json: any = null;
+      try { json = text ? JSON.parse(text) : {}; } catch { json = { rawText: text }; }
+
+      attempts.push({ url, status: resp.status, ok: resp.ok, body: json || text });
+
+      if (!resp.ok) continue;
+
+      const token = json?.access_token || json?.accessToken || json?.token || json?.data?.access_token || json?.data?.token;
+      const expiresIn = json?.expires_in || json?.expiresIn || json?.data?.expires_in || 1800;
+      if (token) {
+        TOKEN_CACHE.token = token;
+        TOKEN_CACHE.expiresAt = Date.now() + Number(expiresIn) * 1000;
+        return { ok: true, token, attempts, cached: false };
+      }
+    } catch (err: any) {
+      attempts.push({ url, error: err?.message || String(err) });
+    }
+  }
+
+  return { ok: false, error: "Failed to fetch token", attempts };
+}
+
+async function sha256Hex(input: string) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 serve(async (req: Request) => {
@@ -21,201 +91,139 @@ serve(async (req: Request) => {
   }
 
   try {
-    console.log("=== CREATE PAYMENT FUNCTION STARTED ===");
-    console.log("Request method:", req.method);
+    console.log("=== CREATE PAYMENT STARTED ===");
 
-    // supabase server client (must provide the service role key in function env)
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-    // Log safe subset of env
-    console.log("Environment variables check:");
-    console.log("- SUPABASE_URL:", (Deno.env.get("SUPABASE_URL") || "").substring(0, 30) + "...");
-    console.log("- PHONEPE_ENV:", Deno.env.get("PHONEPE_ENV"));
-    console.log("- PHONEPE_MERCHANT_ID:", Deno.env.get("PHONEPE_MERCHANT_ID") ? "[SET]" : "[MISSING]");
-    console.log("- PHONEPE_SECRET exists:", !!Deno.env.get("PHONEPE_SECRET"));
-
-    // parse body (allow JSON body)
-    const bodyText = await req.text();
-    let body: PaymentRequest;
-    try {
-      body = bodyText ? JSON.parse(bodyText) : {};
-    } catch {
-      return new Response(JSON.stringify({ success: false, error: "Invalid JSON body" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+    const text = await req.text();
+    let payload: PaymentRequest;
+    try { payload = text ? JSON.parse(text) : {}; } catch {
+      return new Response(JSON.stringify({ success: false, error: "Invalid JSON body" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
-    const { orderId, amount, phone, callbackUrl } = body ?? {};
-
-    if (!orderId || !amount || !phone || !callbackUrl) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Missing required fields: orderId, amount, phone, callbackUrl",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+    const { orderId, amount: rawAmount, phone, callbackUrl } = payload ?? {};
+    if (!orderId || rawAmount == null || !phone || !callbackUrl) {
+      return new Response(JSON.stringify({ success: false, error: "Missing required fields: orderId, amount, phone, callbackUrl" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
+    // envs & config
     const merchantId = Deno.env.get("PHONEPE_MERCHANT_ID") ?? "";
-    const saltKey = Deno.env.get("PHONEPE_SECRET") ?? "";
+    const saltKey = Deno.env.get("PHONEPE_SALT_KEY") ?? Deno.env.get("PHONEPE_SECRET") ?? Deno.env.get("PHONEPE_SALT") ?? "";
     const saltIndex = Deno.env.get("PHONEPE_SALT_INDEX") ?? "1";
-    const environment = (Deno.env.get("PHONEPE_ENV") || "sandbox").toLowerCase();
+    const environment = (Deno.env.get("PHONEPE_ENV") ?? "sandbox").toLowerCase();
 
-    if (!merchantId) {
-      return new Response(JSON.stringify({ success: false, error: "PHONEPE_MERCHANT_ID not set" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+    if (!merchantId) return new Response(JSON.stringify({ success: false, error: "PHONEPE_MERCHANT_ID not set" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders }});
+    if (!saltKey) return new Response(JSON.stringify({ success: false, error: "PHONEPE_SALT_KEY (merchant salt) is not set" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders }});
+
+    // compute amount in paise
+    const amountNumber = Number(rawAmount);
+    if (Number.isNaN(amountNumber) || amountNumber <= 0) {
+      return new Response(JSON.stringify({ success: false, error: "Invalid amount" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
-    if (!saltKey) {
-      return new Response(JSON.stringify({ success: false, error: "PHONEPE_SECRET not set" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
+    const amountPaise = Math.round(amountNumber * 100);
 
-    const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    console.log("Generated transaction ID:", transactionId);
+    // create internal transaction ID
+    const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
 
-    // store a pending payment record (adjust columns to your schema)
+    // save payment record
     const { error: dbError } = await supabase.from("payments").insert({
       order_id: orderId,
       provider: "phonepe",
       provider_payment_id: transactionId,
-      amount: amount,
+      amount: amountNumber,
       status: "pending",
-      phone: phone
+      phone
     });
 
     if (dbError) {
-      console.error("Database insert error:", dbError);
-      return new Response(JSON.stringify({ success: false, error: "Failed to create payment record" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+      console.error("DB insert error:", dbError);
+      return new Response(JSON.stringify({ success: false, error: "DB insert failed", details: dbError }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
-    // mode check
-    const isTestMode = ["sandbox", "development", "test"].includes(environment);
-    console.log("Using test mode?", isTestMode);
-
-    if (isTestMode) {
-      // easy test-mode URL — your frontend can detect this and skip real redirect
+    // sandbox short-circuit
+    if (["sandbox","development","test"].includes(environment)) {
       const mockUrl = `${callbackUrl}/payment/success?transactionId=${transactionId}&status=SUCCESS`;
-      return new Response(JSON.stringify({
-        success: true,
-        paymentUrl: mockUrl,
-        transactionId,
-        message: "Payment created successfully (test mode)"
-      }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+      return new Response(JSON.stringify({ success: true, paymentUrl: mockUrl, transactionId, message: "test-mode" }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
-    // PRODUCTION - configurable base URL & endpoints via env
+    // phonepe API config
     const phonepeBase = Deno.env.get("PHONEPE_BASE_URL") ?? "https://api.phonepe.com/apis/pg";
-    const payPath = Deno.env.get("PHONEPE_PAY_PATH") ?? "/v1/pay"; // should start with /
-    const statusPathPrefix = Deno.env.get("PHONEPE_STATUS_PREFIX") ?? "/v1/status"; // used in verify function
+    const primaryPath = Deno.env.get("PHONEPE_PAY_PATH") ?? "/checkout/v2/pay";
+    const fallbackPath = Deno.env.get("PHONEPE_PAY_FALLBACK") ?? "/pg/v1/pay";
 
-    // Build payload
-    const paymentPayload = {
-      merchantId,
-      merchantTransactionId: transactionId,
-      merchantUserId: `USER_${Date.now()}`,
-      amount: Math.round(amount * 100), // rupees -> paise
-      redirectUrl: `${callbackUrl}/payment/success?transactionId=${transactionId}`,
-      redirectMode: "REDIRECT",
-      callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/verify-payment?transactionId=${transactionId}`,
-      mobileNumber: phone,
-      paymentInstrument: { type: "PAY_PAGE" }
+    // get token (auto)
+    const tokenRes = await fetchPhonePeToken();
+    console.log("Token fetch result:", tokenRes);
+    if (!tokenRes.ok || !tokenRes.token) {
+      return new Response(JSON.stringify({ success: false, error: "Failed to fetch PhonePe auth token", tokenResult: tokenRes }), { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders }});
+    }
+    const authToken = tokenRes.token;
+
+    // helper to call pay path
+    const callPayPath = async (path: string) => {
+      // payload must include merchantOrderId (your order id) and amount in paise
+      const payloadObj = {
+        merchantOrderId: orderId,
+        merchantId,
+        merchantTransactionId: transactionId,
+        merchantUserId: `USER_${Date.now()}`,
+        amount: amountPaise,
+        redirectUrl: `${callbackUrl}/payment/success?transactionId=${transactionId}`,
+        redirectMode: "REDIRECT",
+        callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/verify-payment?transactionId=${transactionId}`,
+        mobileNumber: phone,
+        paymentInstrument: { type: "PAY_PAGE" }
+      };
+
+      const payloadString = JSON.stringify(payloadObj);
+      const payloadBase64 = typeof btoa === "function" ? btoa(payloadString) : Buffer.from(payloadString).toString("base64");
+
+      const stringToHash = payloadBase64 + path + saltKey;
+      const signatureHex = await sha256Hex(stringToHash);
+      const signature = signatureHex + "###" + saltIndex;
+
+      const resp = await fetch(`${phonepeBase}${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-VERIFY": signature,
+          "X-MERCHANT-ID": merchantId,
+          "Authorization": `O-Bearer ${authToken}`,
+          "accept": "application/json"
+        },
+        body: JSON.stringify({ request: payloadBase64 })
+      });
+
+      const text = await resp.text();
+      let json: any = null;
+      try { json = text ? JSON.parse(text) : {}; } catch { json = { rawText: text } }
+      return { ok: resp.ok, status: resp.status, json, raw: text, requestPayload: payloadObj };
     };
 
-    console.log("Payment payload (snippet):", JSON.stringify(paymentPayload).slice(0, 200));
+    // try primary path first
+    const first = await callPayPath(primaryPath);
+    console.log("PhonePe primary attempt:", { path: primaryPath, status: first.status, ok: first.ok, body: first.json || first.raw, requestPayload: first.requestPayload });
 
-    // base64 encode payload
-    const payloadString = JSON.stringify(paymentPayload);
-    // btoa exists in Deno global for base64 encode of utf-8? to be safe:
-    const payloadBase64 = typeof btoa === "function"
-      ? btoa(payloadString)
-      : Buffer.from(payloadString).toString("base64");
-
-    // signature: payloadBase64 + payPath + saltKey (this matches PhonePe docs for pay)
-    const endpointForHash = payPath; // e.g. "/v1/pay"
-    const stringToHash = payloadBase64 + endpointForHash + saltKey;
-    const encoder = new TextEncoder();
-    const data = encoder.encode(stringToHash);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('') + "###" + saltIndex;
-
-    console.log("Calling PhonePe at:", phonepeBase + payPath);
-
-    const phonepeResponse = await fetch(`${phonepeBase}${payPath}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-VERIFY": signature,
-        "accept": "application/json",
-        "X-MERCHANT-ID": merchantId
-      },
-      body: JSON.stringify({ request: payloadBase64 })
-    });
-
-    console.log("PhonePe response status:", phonepeResponse.status);
-    const responseText = await phonepeResponse.text();
-    console.log("PhonePe raw response:", responseText);
-
-    let phonepeData;
-    try {
-      phonepeData = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("Failed to parse PhonePe response:", parseError);
-      return new Response(JSON.stringify({ success: false, error: "Invalid response from PhonePe", details: responseText }), {
-        status: 502,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+    if (first.ok && first.json?.success && first.json?.data?.instrumentResponse?.redirectInfo?.url) {
+      return new Response(JSON.stringify({ success: true, paymentUrl: first.json.data.instrumentResponse.redirectInfo.url, transactionId, usedPath: primaryPath }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
-    console.log("PhonePe response parsed:", phonepeData);
+    // if primary returned 404 try fallback
+    if (first.status === 404) {
+      const second = await callPayPath(fallbackPath);
+      console.log("PhonePe fallback attempt:", { path: fallbackPath, status: second.status, ok: second.ok, body: second.json || second.raw, requestPayload: second.requestPayload });
 
-    if (phonepeResponse.ok && phonepeData?.success && phonepeData?.data?.instrumentResponse?.redirectInfo?.url) {
-      const redirectUrl = phonepeData.data.instrumentResponse.redirectInfo.url;
-      // return full success
-      return new Response(JSON.stringify({
-        success: true,
-        paymentUrl: redirectUrl,
-        transactionId
-      }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    } else {
-      console.error("PhonePe API returned error:", phonepeData);
-      return new Response(JSON.stringify({
-        success: false,
-        error: phonepeData?.message || phonepeData?.code || "PhonePe returned failure",
-        raw: phonepeData
-      }), {
-        status: 502,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+      if (second.ok && second.json?.success && second.json?.data?.instrumentResponse?.redirectInfo?.url) {
+        return new Response(JSON.stringify({ success: true, paymentUrl: second.json.data.instrumentResponse.redirectInfo.url, transactionId, usedPath: fallbackPath }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
+      }
+
+      return new Response(JSON.stringify({ success: false, error: "PhonePe API request failed (both endpoints)", attempts: [{ path: primaryPath, status: first.status, body: first.json || first.raw }, { path: fallbackPath, status: second.status, body: second.json || second.raw }] }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
+    // primary failed but not 404 -> return detailed error
+    return new Response(JSON.stringify({ success: false, error: `PhonePe API request failed: ${first.status}`, attempt: { path: primaryPath, status: first.status, body: first.json || first.raw, requestPayload: first.requestPayload } }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
   } catch (err: any) {
-    console.error("create-payment unhandled error:", err);
-    return new Response(JSON.stringify({
-      success: false,
-      error: err?.message || "Internal error",
-      stack: err?.stack
-    }), {
-      status: 500,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
+    console.error("create-payment fatal:", err);
+    return new Response(JSON.stringify({ success: false, error: err?.message || "internal error", stack: err?.stack }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders }});
   }
 });

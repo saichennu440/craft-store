@@ -6,6 +6,7 @@ import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { ProductImageSlider } from './ProductImageSlider'
 import { useCartStore } from '../../store/cartStore'
+import { useWishlistStore } from '../../store/wishlistStore'
 import { formatCurrency } from '../../lib/utils'
 import type { Product } from '../../types/database'
 import toast from 'react-hot-toast'
@@ -16,12 +17,28 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addItem } = useCartStore()
+  const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore()
+  
+  const isWishlisted = isInWishlist(product.id)
   
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     addItem(product, 1)
     toast.success('Added to cart!')
+  }
+  
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (isWishlisted) {
+      removeFromWishlist(product.id)
+      toast.success('Removed from wishlist')
+    } else {
+      addToWishlist(product)
+      toast.success('Added to wishlist!')
+    }
   }
   
   return (
@@ -53,16 +70,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white text-gray-600 p-2 rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+                onClick={handleToggleWishlist}
+                className={`bg-white p-2 rounded-full shadow-lg transition-colors ${
+                  isWishlisted 
+                    ? 'text-red-500 hover:bg-red-50' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
               >
-                <Heart size={20} />
+                <Heart size={20} className={isWishlisted ? 'fill-current' : ''} />
               </motion.button>
             </div>
           </div>
           
           {/* Stock Badge */}
           {product.stock === 0 && (
-            <div className="absolute top-2 right-2 bg-red-500 text-slate-800 px-2 py-1 rounded-full text-xs font-medium">
+            <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
               Out of Stock
             </div>
           )}
@@ -77,10 +99,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             {product.description}
           </p>
           <div className="flex items-center justify-between">
-            <span className="text-xl font-bold text-primary-600 text-slate-800">
+            <span className="text-xl font-bold text-primary-600">
               {formatCurrency(product.price)}
             </span>
-            {/* <motion.div whileHover={{ scale: 1.05 }}>
+            <motion.div whileHover={{ scale: 1.05 }}>
               <Button
                 size="sm"
                 onClick={handleAddToCart}
@@ -88,7 +110,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               >
                 Add to Cart
               </Button>
-            </motion.div> */}
+            </motion.div>
           </div>
         </div>
       </Card>

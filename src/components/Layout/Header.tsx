@@ -1,18 +1,21 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ShoppingCart, User, Search, Menu, X } from 'lucide-react'
+import { ShoppingCart, User, Search, Menu, X, Heart } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
+import { useWishlistStore } from '../../store/wishlistStore'
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { isAuthenticated, isAdminUser, signOut } = useAuthStore()
   const { getTotalItems } = useCartStore()
+  const { getTotalItems: getWishlistItems } = useWishlistStore()
   const navigate = useNavigate()
   
   const totalItems = getTotalItems()
+  const wishlistItems = getWishlistItems()
   
   const handleSignOut = async () => {
     await signOut()
@@ -26,10 +29,10 @@ export const Header: React.FC = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-              <span className="text-red-600 font-bold text-base sm:text-lg">C2C</span>
+              <span className="text-red-500 font-bold text-base sm:text-lg">C2C</span>
             </div>
             <span className="text-lg sm:text-xl font-display font-bold text-gray-900">
-              {import.meta.env.VITE_APP_NAME || 'Clay 2 Crafts'}
+              {import.meta.env.VITE_APP_NAME || 'Craftly'}
             </span>
           </Link>
           
@@ -64,9 +67,25 @@ export const Header: React.FC = () => {
           {/* Actions */}
           <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Search */}
-            {/* <button className="hidden sm:block p-2 text-gray-500 hover:text-primary-600 transition-colors">
+            <button className="hidden sm:block p-2 text-gray-500 hover:text-primary-600 transition-colors">
               <Search size={18} className="sm:w-5 sm:h-5" />
-            </button> */}
+            </button>
+            
+            {/* Wishlist */}
+            {isAuthenticated && (
+              <Link to="/wishlist" className="relative p-2 text-gray-500 hover:text-primary-600 transition-colors">
+                <Heart size={18} className="sm:w-5 sm:h-5" />
+                {wishlistItems > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center"
+                  >
+                    {wishlistItems > 9 ? '9+' : wishlistItems}
+                  </motion.span>
+                )}
+              </Link>
+            )}
             
             {/* Cart */}
             <Link to="/cart" className="relative p-2 text-gray-500 hover:text-primary-600 transition-colors">
@@ -75,7 +94,7 @@ export const Header: React.FC = () => {
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 bg-accent-400 text-black text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center"
+                  className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center"
                 >
                   {totalItems > 9 ? '9+' : totalItems}
                 </motion.span>
@@ -167,6 +186,13 @@ export const Header: React.FC = () => {
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Orders
+                  </Link>
+                  <Link 
+                    to="/wishlist" 
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-50 font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Wishlist
                   </Link>
                   {isAdminUser && (
                     <Link to="/admin">

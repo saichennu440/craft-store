@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ProductImageSlider } from '../../components/Product/ProductImageSlider'
 import { useCartStore } from '../../store/cartStore'
+import { useWishlistStore } from '../../store/wishlistStore'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/utils'
 import type { Product } from '../../types/database'
@@ -18,6 +19,9 @@ export const ProductDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const { addItem } = useCartStore()
+  const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore()
+  
+  const isWishlisted = product ? isInWishlist(product.id) : false
   
   useEffect(() => {
     const fetchProduct = async () => {
@@ -67,6 +71,18 @@ export const ProductDetailPage: React.FC = () => {
     
     addItem(product, quantity)
     navigate('/cart')
+  }
+  
+  const handleToggleWishlist = () => {
+    if (!product) return
+    
+    if (isWishlisted) {
+      removeFromWishlist(product.id)
+      toast.success('Removed from wishlist')
+    } else {
+      addToWishlist(product)
+      toast.success('Added to wishlist!')
+    }
   }
   
   if (loading) {
@@ -212,7 +228,7 @@ export const ProductDetailPage: React.FC = () => {
                 <Button
                   onClick={handleBuyNow}
                   disabled={product.stock === 0}
-                  className="flex-1 bg-primary-600 hover:bg-primary-700 text-slate-800 font-semibold py-3"
+                  className="flex-1 bg-primary-600 hover:bg-primary-700 text-gray-800 font-semibold py-3"
                   size="lg"
                 >
                   <ShoppingCart className="mr-2" size={20} />
@@ -222,7 +238,7 @@ export const ProductDetailPage: React.FC = () => {
                   variant="outline"
                   onClick={handleAddToCart}
                   disabled={product.stock === 0}
-                  className="flex-1 border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-neutral-600 font-semibold py-3"
+                  className="flex-1 border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-red-400 font-semibold py-3"
                   size="lg"
                 >
                   Add to Cart
@@ -230,11 +246,16 @@ export const ProductDetailPage: React.FC = () => {
               </div>
               
               <Button
-                variant="ghost"
-                className="w-full text-gray-600 hover:text-primary-600"
+                 variant="outline"
+                onClick={handleToggleWishlist}
+                className={`w-full transition-colors ${
+                  isWishlisted 
+                    ? 'text-red-500 hover:text-red-600 hover:bg-red-50' 
+                    : 'text-gray-600 hover:text-primary-600'
+                }`}
               >
-                <Heart className="mr-2" size={20} />
-                Add to Wishlist
+                <Heart className={`mr-2 ${isWishlisted ? 'fill-current' : ''}`} size={20} />
+                {isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
               </Button>
             </div>
             

@@ -10,13 +10,14 @@ import { CartPage } from './pages/Cart/CartPage'
 import { AuthPage } from './pages/Auth/AuthPage'
 import { AboutPage } from './pages/About/AboutPage'
 import { ContactPage } from './pages/Contact/ContactPage'
-import { PrivacyPage } from './pages/Privacy/PrivacyPage'
 import { TermsPage } from './pages/Term/TermsPage'
+import { PrivacyPage } from './pages/Privacy/PrivacyPage'
 import { CheckoutPage } from './pages/Checkout/CheckoutPage'
 import { PaymentSuccess } from './pages/Payment/PaymentSuccess'
 import { PaymentFailure } from './pages/Payment/PaymentFailure'
 import { OrdersPage } from './pages/Orders/OrdersPage'
 import { AdminPage } from './pages/Admin/AdminPage'
+import { WishlistPage } from './pages/Wishlist/WishlistPage'
 import { useAuthStore } from './store/authStore'
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/failure" element={<PaymentFailure />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </main>
