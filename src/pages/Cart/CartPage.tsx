@@ -191,7 +191,9 @@ export const CartPage: React.FC = () => {
                       <div className="flex justify-between">
                         <span className="text-xl font-bold text-gray-900">Total</span>
                         <span className="text-xl font-bold text-primary-600">
-                          {formatCurrency(totalPrice + (totalPrice > 999 ? 0 : 99))}
+                          {formatCurrency(totalPrice )}
+                           {/* {formatCurrency(totalPrice + (totalPrice > 999 ? 0 : 99))} */}
+
                         </span>
                       </div>
                     </div>

@@ -30,9 +30,10 @@ export const CheckoutPage: React.FC = () => {
   const { register, handleSubmit, formState: { errors } } = useForm<CheckoutForm>()
   
   const totalPrice = getTotalPrice()
-  const shippingCost = totalPrice > 999 ? 0 : 99
-  const finalTotal = totalPrice + shippingCost
-  
+  // const shippingCost = totalPrice > 999 ? 0 : 99
+  // const finalTotal = totalPrice + shippingCost
+    const shippingCost = totalPrice 
+  const finalTotal = totalPrice 
   React.useEffect(() => {
     if (!isAuthenticated) {
       navigate('/auth?redirect=/checkout')
