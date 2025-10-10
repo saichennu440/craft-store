@@ -39,7 +39,6 @@ async function fetchPhonePeToken() {
   }
 
   const attempts: any[] = [];
-
   for (const url of candidateUrls) {
     try {
       const params = new URLSearchParams();
@@ -92,7 +91,6 @@ serve(async (req: Request) => {
 
   try {
     console.log("=== CREATE PAYMENT STARTED ===");
-
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
     const text = await req.text();
@@ -106,26 +104,23 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ success: false, error: "Missing required fields: orderId, amount, phone, callbackUrl" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
-    // envs & config
     const merchantId = Deno.env.get("PHONEPE_MERCHANT_ID") ?? "";
     const saltKey = Deno.env.get("PHONEPE_SALT_KEY") ?? Deno.env.get("PHONEPE_SECRET") ?? Deno.env.get("PHONEPE_SALT") ?? "";
     const saltIndex = Deno.env.get("PHONEPE_SALT_INDEX") ?? "1";
     const environment = (Deno.env.get("PHONEPE_ENV") ?? "sandbox").toLowerCase();
 
     if (!merchantId) return new Response(JSON.stringify({ success: false, error: "PHONEPE_MERCHANT_ID not set" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders }});
-    if (!saltKey) return new Response(JSON.stringify({ success: false, error: "PHONEPE_SALT_KEY (merchant salt) is not set" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders }});
+    if (!saltKey) console.warn("PHONEPE_SALT_KEY not set (only required for legacy endpoints)");
 
-    // compute amount in paise
     const amountNumber = Number(rawAmount);
     if (Number.isNaN(amountNumber) || amountNumber <= 0) {
       return new Response(JSON.stringify({ success: false, error: "Invalid amount" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
     const amountPaise = Math.round(amountNumber * 100);
 
-    // create internal transaction ID
+    // create internal transaction ID and save
     const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
 
-    // save payment record
     const { error: dbError } = await supabase.from("payments").insert({
       order_id: orderId,
       provider: "phonepe",
@@ -140,18 +135,28 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ success: false, error: "DB insert failed", details: dbError }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
-    // sandbox short-circuit
     if (["sandbox","development","test"].includes(environment)) {
       const mockUrl = `${callbackUrl}/payment/success?transactionId=${transactionId}&status=SUCCESS`;
       return new Response(JSON.stringify({ success: true, paymentUrl: mockUrl, transactionId, message: "test-mode" }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
-    // phonepe API config
+    // production (v2) path and fallback
     const phonepeBase = Deno.env.get("PHONEPE_BASE_URL") ?? "https://api.phonepe.com/apis/pg";
     const primaryPath = Deno.env.get("PHONEPE_PAY_PATH") ?? "/checkout/v2/pay";
-    const fallbackPath = Deno.env.get("PHONEPE_PAY_FALLBACK") ?? "/pg/v1/pay";
+    const fallbackPath = Deno.env.get("PHONEPE_PAY_FALLBACK") ?? "/pg/v1/pay"; // legacy if you need
 
-    // get token (auto)
+    // require https origin for production
+    if (environment === "production" && !/^https:\/\//i.test(callbackUrl)) {
+      return new Response(JSON.stringify({ success: false, error: "In production callbackUrl must be https:// origin" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
+    }
+
+    // Normalize mobile — add Indian country code if 10-digit number provided
+    let mobileNumber = phone?.toString().trim();
+    if (/^[6-9]\d{9}$/.test(mobileNumber)) {
+      mobileNumber = `91${mobileNumber}`;
+    }
+
+    // fetch OAuth token (v2)
     const tokenRes = await fetchPhonePeToken();
     console.log("Token fetch result:", tokenRes);
     if (!tokenRes.ok || !tokenRes.token) {
@@ -159,9 +164,48 @@ serve(async (req: Request) => {
     }
     const authToken = tokenRes.token;
 
-    // helper to call pay path
-    const callPayPath = async (path: string) => {
-      // payload must include merchantOrderId (your order id) and amount in paise
+    // For checkout/v2/pay: PhonePe expects plain JSON body (not base64 + X-VERIFY)
+    async function callV2Pay(path: string) {
+      // v2 payload shape — follow Postman / docs
+      const payloadObj = {
+        merchantOrderId: orderId,
+        amount: amountPaise,
+        // optional fields often expected
+        expireAfter: 3600,
+        paymentFlow: {
+          type: "PG_CHECKOUT",
+          merchantUrls: {
+            redirectUrl: `${callbackUrl}/payment/success?transactionId=${transactionId}`
+          }
+        },
+        metaInfo: {
+          merchantTransactionId: transactionId,
+          merchantUserId: `USER_${Date.now()}`,
+          mobileNumber
+        }
+      };
+
+      const resp = await fetch(`${phonepeBase}${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `O-Bearer ${authToken}`,
+          // X-MERCHANT-ID is optional for v2 (doc examples don't require it), safe to include
+          "X-MERCHANT-ID": merchantId,
+          "accept": "application/json"
+        },
+        body: JSON.stringify(payloadObj)
+      });
+
+      const text = await resp.text();
+      let json: any = null;
+      try { json = text ? JSON.parse(text) : {}; } catch { json = { rawText: text }; }
+
+      return { ok: resp.ok, status: resp.status, json, raw: text, requestPayload: payloadObj };
+    }
+
+    // Legacy: base64 + X-VERIFY approach (only call if primary is legacy or fallback)
+    async function callLegacyPay(path: string) {
       const payloadObj = {
         merchantOrderId: orderId,
         merchantId,
@@ -171,7 +215,7 @@ serve(async (req: Request) => {
         redirectUrl: `${callbackUrl}/payment/success?transactionId=${transactionId}`,
         redirectMode: "REDIRECT",
         callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/verify-payment?transactionId=${transactionId}`,
-        mobileNumber: phone,
+        mobileNumber,
         paymentInstrument: { type: "PAY_PAGE" }
       };
 
@@ -196,32 +240,42 @@ serve(async (req: Request) => {
 
       const text = await resp.text();
       let json: any = null;
-      try { json = text ? JSON.parse(text) : {}; } catch { json = { rawText: text } }
+      try { json = text ? JSON.parse(text) : {}; } catch { json = { rawText: text }; }
       return { ok: resp.ok, status: resp.status, json, raw: text, requestPayload: payloadObj };
-    };
-
-    // try primary path first
-    const first = await callPayPath(primaryPath);
-    console.log("PhonePe primary attempt:", { path: primaryPath, status: first.status, ok: first.ok, body: first.json || first.raw, requestPayload: first.requestPayload });
-
-    if (first.ok && first.json?.success && first.json?.data?.instrumentResponse?.redirectInfo?.url) {
-      return new Response(JSON.stringify({ success: true, paymentUrl: first.json.data.instrumentResponse.redirectInfo.url, transactionId, usedPath: primaryPath }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
-    // if primary returned 404 try fallback
-    if (first.status === 404) {
-      const second = await callPayPath(fallbackPath);
-      console.log("PhonePe fallback attempt:", { path: fallbackPath, status: second.status, ok: second.ok, body: second.json || second.raw, requestPayload: second.requestPayload });
+    // First try v2 plain JSON if primaryPath includes 'checkout/v2'
+    let firstAttempt;
+    if (primaryPath.includes("/checkout/v2")) {
+      firstAttempt = await callV2Pay(primaryPath);
+      console.log("PhonePe v2 primary attempt:", { path: primaryPath, status: firstAttempt.status, ok: firstAttempt.ok, body: firstAttempt.json || firstAttempt.raw, requestPayload: firstAttempt.requestPayload });
+    } else {
+      // primary was configured as legacy
+      firstAttempt = await callLegacyPay(primaryPath);
+      console.log("PhonePe legacy primary attempt:", { path: primaryPath, status: firstAttempt.status, ok: firstAttempt.ok, body: firstAttempt.json || firstAttempt.raw, requestPayload: firstAttempt.requestPayload });
+    }
 
-      if (second.ok && second.json?.success && second.json?.data?.instrumentResponse?.redirectInfo?.url) {
-        return new Response(JSON.stringify({ success: true, paymentUrl: second.json.data.instrumentResponse.redirectInfo.url, transactionId, usedPath: fallbackPath }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
+    // If v2 succeeded and returned redirect / redirectUrl or instrumentResponse, return it
+    if (firstAttempt.ok && (firstAttempt.json?.redirectUrl || firstAttempt.json?.data?.instrumentResponse?.redirectInfo?.url)) {
+      const redirectUrl = firstAttempt.json?.redirectUrl || firstAttempt.json?.data?.instrumentResponse?.redirectInfo?.url;
+      return new Response(JSON.stringify({ success: true, paymentUrl: redirectUrl, transactionId, usedPath: primaryPath }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
+    }
+
+    // If primary was v2 and failed with 404, try fallback legacy
+    if (firstAttempt.status === 404 && fallbackPath) {
+      const secondAttempt = await callLegacyPay(fallbackPath);
+      console.log("PhonePe fallback legacy attempt:", { path: fallbackPath, status: secondAttempt.status, ok: secondAttempt.ok, body: secondAttempt.json || secondAttempt.raw, requestPayload: secondAttempt.requestPayload });
+
+      if (secondAttempt.ok && secondAttempt.json?.data?.instrumentResponse?.redirectInfo?.url) {
+        return new Response(JSON.stringify({ success: true, paymentUrl: secondAttempt.json.data.instrumentResponse.redirectInfo.url, transactionId, usedPath: fallbackPath }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
       }
 
-      return new Response(JSON.stringify({ success: false, error: "PhonePe API request failed (both endpoints)", attempts: [{ path: primaryPath, status: first.status, body: first.json || first.raw }, { path: fallbackPath, status: second.status, body: second.json || second.raw }] }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
+      return new Response(JSON.stringify({ success: false, error: "PhonePe API request failed (both endpoints)", attempts: [{ path: primaryPath, status: firstAttempt.status, body: firstAttempt.json || firstAttempt.raw }, { path: fallbackPath, status: secondAttempt.status, body: secondAttempt.json || secondAttempt.raw }] }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
-    // primary failed but not 404 -> return detailed error
-    return new Response(JSON.stringify({ success: false, error: `PhonePe API request failed: ${first.status}`, attempt: { path: primaryPath, status: first.status, body: first.json || first.raw, requestPayload: first.requestPayload } }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
+    // Otherwise return the primary attempt failure with details (this helps debugging)
+    return new Response(JSON.stringify({ success: false, error: `PhonePe API request failed: ${firstAttempt.status}`, attempt: { path: primaryPath, status: firstAttempt.status, body: firstAttempt.json || firstAttempt.raw, requestPayload: firstAttempt.requestPayload } }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
+
   } catch (err: any) {
     console.error("create-payment fatal:", err);
     return new Response(JSON.stringify({ success: false, error: err?.message || "internal error", stack: err?.stack }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders }});
