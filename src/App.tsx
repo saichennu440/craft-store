@@ -15,7 +15,7 @@ import { PrivacyPage } from './pages/Privacy/PrivacyPage'
 import { CheckoutPage } from './pages/Checkout/CheckoutPage'
 import { PaymentSuccess } from './pages/Payment/PaymentSuccess'
 import { PaymentFailure } from './pages/Payment/PaymentFailure'
-import { PaymentResult } from "./pages/payment/PaymentResult";
+import { PaymentResult}  from './pages/Payment/PaymentResult'
 import { OrdersPage } from './pages/Orders/OrdersPage'
 import { AdminPage } from './pages/Admin/AdminPage'
 import { WishlistPage } from './pages/Wishlist/WishlistPage'
