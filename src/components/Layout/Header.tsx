@@ -32,7 +32,7 @@ export const Header: React.FC = () => {
               <span className="text-red-500 font-bold text-base sm:text-lg">C2C</span>
             </div>
             <span className="text-lg sm:text-xl font-display font-bold text-gray-900">
-              {import.meta.env.VITE_APP_NAME || 'Craftly'}
+              {import.meta.env.VITE_APP_NAME || 'Clay2Crafts'}
             </span>
           </Link>
           
