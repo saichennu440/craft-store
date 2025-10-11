@@ -1,6 +1,7 @@
 // src/pages/payment/PaymentResult.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase"; // <- use Supabase client so auth header is present
 
 const SUCCESS_STATES = new Set(["SUCCESS", "success", "COMPLETED", "PAID", "completed", "paid"]);
 const FAILED_STATES = new Set(["FAILED", "failed", "CANCELLED", "cancelled", "ERROR", "error"]);
@@ -14,18 +15,15 @@ function isSuccess(body: any) {
   if (typeof body.state === "string" && SUCCESS_STATES.has(body.state)) return true;
   return false;
 }
-
 function isFailed(body: any) {
   if (!body) return false;
-  if (body.success === false && (typeof body.status === "string" && FAILED_STATES.has(body.status))) return true;
+  if (body.success === false) return true;
   if (typeof body.status === "string" && FAILED_STATES.has(body.status)) return true;
   if (body.data && typeof body.data.state === "string" && FAILED_STATES.has(body.data.state)) return true;
   if (typeof body.state === "string" && FAILED_STATES.has(body.state)) return true;
-  // Some APIs return explicit error flags/messages
   if (body.error && typeof body.error === "string" && body.error.toLowerCase().includes("failed")) return true;
   return false;
 }
-
 function isPending(body: any) {
   if (!body) return false;
   if (typeof body.status === "string" && PENDING_STATES.has(body.status)) return true;
@@ -53,77 +51,73 @@ export const PaymentResult: React.FC = () => {
         return;
       }
 
-      const maxAttempts = 12;          // total tries
-      const baseDelayMs = 600;        // base delay
+      const maxAttempts = 12;
+      const baseDelayMs = 600;
       let lastError = "Unknown verification error";
 
       for (let attempt = 1; attempt <= maxAttempts && mounted; attempt++) {
         setAttemptsMade(attempt);
+
         try {
-          const url = `${import.meta.env.VITE_SUPABASE_FUNCTION_URL}/verify-payment?transactionId=${encodeURIComponent(transactionId)}`;
-          console.log(`[PaymentResult] verify attempt ${attempt} -> ${url}`);
+          console.log(`[PaymentResult] invoke verify-payment attempt ${attempt} for ${transactionId}`);
 
-          const res = await fetch(url, { method: "GET", headers: { "Content-Type": "application/json" } });
+          // Use supabase.functions.invoke so the request includes the anon key (avoids 401)
+          const invokeResult = await supabase.functions.invoke("verify-payment", {
+            body: { transactionId },
+          });
 
-          // try parse JSON safely; if parse fails, capture text
+          // supabase.functions.invoke returns { data, error } (or sometimes throws); handle both
+          // If it throws, it will be caught by catch block below.
+          // Normalize body:
           let body: any = null;
-          try {
-            body = await res.json();
-          } catch (parseErr) {
-            const txt = await res.text().catch(() => "");
-            body = { rawText: txt };
+          if ((invokeResult as any).error) {
+            // function returned non-2xx or supabase client wrapped error
+            body = { error: (invokeResult as any).error?.message || (invokeResult as any).error };
+            console.log("[PaymentResult] supabase.invoke error object:", (invokeResult as any).error);
+          } else {
+            body = (invokeResult as any).data ?? invokeResult;
           }
 
-          // log the raw body to console for debugging
-          console.log("[PaymentResult] verify response:", { httpStatus: res.status, body });
+          console.log("[PaymentResult] verify response:", { attempt, body });
 
-          // keep last body for UI/debug
           setLastBody(body);
 
-          // success condition (multiple accepted shapes)
+          // success -> redirect
           if (isSuccess(body)) {
-            // success — redirect
             navigate(`/payment/success?transactionId=${encodeURIComponent(transactionId)}`);
             return;
           }
 
-          // explicit failure condition
+          // explicit failure -> redirect failure
           if (isFailed(body)) {
             const msg = body?.error || body?.message || body?.data?.message || "Payment failed";
             navigate(`/payment/failure?error=${encodeURIComponent(msg)}`);
             return;
           }
 
-          // If server returns pending-ish state or ambiguous - retry
-          if (isPending(body) || res.status >= 500 || res.status === 202 || (res.status === 200 && !body.success && !isFailed(body))) {
-            // treat as transient: retry after waiting
-            lastError = body?.error || body?.message || `Attempt ${attempt} status ${res.status}`;
-            // small exponential backoff
+          // pending/ambiguous -> retry
+          if (isPending(body) || (body && (body.attempts || body.rawText || body.message))) {
+            lastError = body?.error || body?.message || `Attempt ${attempt} ambiguous`;
+            // backoff
             await wait(baseDelayMs * attempt);
             continue;
           }
 
-          // Some 4xx responses might be transient (e.g., PhonePe returned BAD_REQUEST while it validates)
-          if (res.status >= 400 && res.status < 500) {
-            // If body contains "must not be null" etc it's likely a validation, but we still allow a few retries
-            lastError = body?.error || body?.message || `HTTP ${res.status}`;
-            await wait(baseDelayMs * attempt);
-            continue;
-          }
-
-          // default: mark as failure after attempts exhausted
-          lastError = body?.error || body?.message || `HTTP ${res.status}`;
+          // default fallback: treat as transient and retry a few times
+          lastError = body?.error || body?.message || "Verification returned ambiguous response";
+          await wait(baseDelayMs * attempt);
 
         } catch (err: any) {
-          console.warn("[PaymentResult] verify attempt error:", err);
+          // network or thrown error from supabase client
+          console.warn("[PaymentResult] invocation exception:", err);
           lastError = err?.message || String(err);
-          // transient network error -> retry
+          // transient -> retry
           await wait(baseDelayMs * attempt);
           continue;
         }
       }
 
-      // exhausted attempts -> treat as failure
+      // exhausted attempts -> failure
       if (mounted) {
         navigate(`/payment/failure?error=${encodeURIComponent(lastError)}`);
       }
