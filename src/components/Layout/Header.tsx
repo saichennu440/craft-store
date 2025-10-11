@@ -67,9 +67,9 @@ export const Header: React.FC = () => {
           {/* Actions */}
           <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Search */}
-            <button className="hidden sm:block p-2 text-gray-500 hover:text-primary-600 transition-colors">
+            {/* <button className="hidden sm:block p-2 text-gray-500 hover:text-primary-600 transition-colors">
               <Search size={18} className="sm:w-5 sm:h-5" />
-            </button>
+            </button> */}
             
             {/* Wishlist */}
             {isAuthenticated && (

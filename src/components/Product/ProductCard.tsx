@@ -102,7 +102,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <span className="text-xl font-bold text-primary-600">
               {formatCurrency(product.price)}
             </span>
-            <motion.div whileHover={{ scale: 1.05 }}>
+            {/* <motion.div whileHover={{ scale: 1.05 }}>
               <Button
                 size="sm"
                 onClick={handleAddToCart}
@@ -110,7 +110,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               >
                 Add to Cart
               </Button>
-            </motion.div>
+            </motion.div> */}
           </div>
         </div>
       </Card>

@@ -10,6 +10,7 @@ const corsHeaders = {
 
 let TOKEN_CACHE: { token?: string; expiresAt?: number } = {};
 
+/** Fetch PhonePe OAuth token (tries multiple candidate URLs, caches) */
 async function fetchPhonePeToken() {
   if (TOKEN_CACHE.token && TOKEN_CACHE.expiresAt && Date.now() < TOKEN_CACHE.expiresAt - 5000) {
     return { ok: true, token: TOKEN_CACHE.token, cached: true };
@@ -61,6 +62,7 @@ async function fetchPhonePeToken() {
   return { ok: false, error: "Failed to fetch token", attempts };
 }
 
+/** SHA-256 hex (lowercase) */
 async function sha256Hex(input: string) {
   const encoder = new TextEncoder();
   const data = encoder.encode(input);
@@ -78,45 +80,79 @@ serve(async (req: Request) => {
     console.log("=== VERIFY PAYMENT STARTED ===");
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-    // Get transactionId from query or body
+    // parse transactionId from query or body
     const url = new URL(req.url);
     let transactionId = url.searchParams.get("transactionId");
     if (!transactionId) {
       const raw = await req.text();
       try { const parsed = raw ? JSON.parse(raw) : {}; transactionId = parsed.transactionId || transactionId; } catch {}
     }
-    if (!transactionId) return new Response(JSON.stringify({ success: false, error: "transactionId is required" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
+    if (!transactionId) {
+      return new Response(JSON.stringify({ success: false, error: "transactionId is required" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
+    }
 
+    // envs
     const merchantId = Deno.env.get("PHONEPE_MERCHANT_ID") ?? "";
     const saltKey = Deno.env.get("PHONEPE_SALT_KEY") ?? Deno.env.get("PHONEPE_SECRET") ?? Deno.env.get("PHONEPE_SALT") ?? "";
     const saltIndex = Deno.env.get("PHONEPE_SALT_INDEX") ?? "1";
     const environment = (Deno.env.get("PHONEPE_ENV") ?? "sandbox").toLowerCase();
 
     if (!merchantId) return new Response(JSON.stringify({ success: false, error: "PHONEPE_MERCHANT_ID not set" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders }});
-    if (!saltKey) return new Response(JSON.stringify({ success: false, error: "PHONEPE_SALT_KEY (merchant salt) is not set" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders }});
+    if (!saltKey) console.warn("PHONEPE_SALT_KEY not set (legacy endpoints may require it)");
 
-    // If sandbox/testing mode - simulate success
+    // shortcut for sandbox/dev
     if (["sandbox","development","test"].includes(environment)) {
-      await supabase.from("payments").update({ status: "success" }).eq("provider_payment_id", transactionId);
+      try {
+        await supabase.from("payments").update({ status: "success" }).eq("provider_payment_id", transactionId);
+        // attempt to update orders as well (if payments has order_id)
+        const { data: paymentRow } = await supabase.from("payments").select("order_id").eq("provider_payment_id", transactionId).maybeSingle();
+        if (paymentRow?.order_id) {
+          await supabase.from("orders").update({ status: "paid" }).eq("id", paymentRow.order_id);
+        }
+      } catch (e) {
+        console.warn("Sandbox update warnings:", e);
+      }
       return new Response(JSON.stringify({ success: true, status: "SUCCESS", message: "Test mode verified" }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
     }
 
-    // Lookup payment row to obtain the merchantOrderId (order_id) which PhonePe expects in status path
+    // --- Robust lookup for payment row and merchantOrderId fallback ---
     let merchantOrderId: string | null = null;
+    let paymentOrderId: string | null = null; // order_id in our DB
+    let paymentRowRaw: any = null;
+
     try {
+      // select multiple possible columns that may exist in different schemas
       const { data: paymentRow, error: fetchErr } = await supabase
         .from("payments")
-        .select("order_id")
+        .select(`
+          order_id,
+          merchant_order_id,
+          merchantOrderId,
+          merchant_transaction_id,
+          provider_payment_id,
+          status
+        `)
         .eq("provider_payment_id", transactionId)
-        .single();
+        .maybeSingle(); // returns null if not found
 
       if (fetchErr) {
         console.warn("Could not fetch payment row for transactionId:", transactionId, fetchErr);
-      } else if (paymentRow?.order_id) {
-        merchantOrderId = paymentRow.order_id;
+      } else if (!paymentRow) {
+        console.warn("No payment row found for provider_payment_id:", transactionId);
+      } else {
+        paymentRowRaw = paymentRow;
+        paymentOrderId = (paymentRow.order_id ?? (paymentRow as any).orderId ?? null);
+        merchantOrderId = (paymentRow.merchant_order_id ?? (paymentRow as any).merchantOrderId ?? paymentOrderId ?? null);
+
+        console.log("Found payment row:", {
+          paymentOrderId,
+          merchantOrderId,
+          provider_payment_id: paymentRow.provider_payment_id,
+          existingStatus: paymentRow.status
+        });
       }
     } catch (e) {
-      console.warn("Payment lookup failed:", e);
+      console.warn("Payment lookup failed (exception):", e);
     }
 
     // Build candidate status paths:
@@ -127,12 +163,11 @@ serve(async (req: Request) => {
     if (merchantOrderId) {
       statusCandidates.push((Deno.env.get("PHONEPE_STATUS_PREFIX") ?? "/checkout/v2/order") + `/${merchantOrderId}/status`);
     } else {
-      // If merchantOrderId not found, still try with transactionId fallback (older style)
       console.warn("merchantOrderId not found for transactionId, will try fallback style only.");
     }
     statusCandidates.push((Deno.env.get("PHONEPE_STATUS_ALT") ?? "/pg/v1/status") + `/${merchantId}/${transactionId}`);
 
-    // get token
+    // fetch token
     const tokenRes = await fetchPhonePeToken();
     console.log("Token fetch result (verify):", tokenRes);
     if (!tokenRes.ok || !tokenRes.token) {
@@ -142,55 +177,86 @@ serve(async (req: Request) => {
 
     const attempts: any[] = [];
     for (const path of statusCandidates) {
-      const stringToHash = path + saltKey;
-      const signatureHex = await sha256Hex(stringToHash);
-      const signature = signatureHex + "###" + saltIndex;
+      try {
+        const stringToHash = path + saltKey;
+        const signatureHex = await sha256Hex(stringToHash);
+        const signature = signatureHex + "###" + saltIndex;
 
-      const resp = await fetch(`${phonepeBase}${path}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-VERIFY": signature,
-          "X-MERCHANT-ID": merchantId,
-          "Authorization": `O-Bearer ${authToken}`,
-          "accept": "application/json"
+        const resp = await fetch(`${phonepeBase}${path}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "X-VERIFY": signature,
+            "X-MERCHANT-ID": merchantId,
+            "Authorization": `O-Bearer ${authToken}`,
+            "accept": "application/json"
+          }
+        });
+
+        const text = await resp.text();
+        let json: any = null;
+        try { json = text ? JSON.parse(text) : {}; } catch { json = { rawText: text } }
+        attempts.push({ path, status: resp.status, ok: resp.ok, body: json || text });
+
+        console.log("PhonePe status attempt:", { path, status: resp.status, ok: resp.ok, body: json || text });
+
+        if (!resp.ok) {
+          // try next candidate
+          continue;
         }
-      });
 
-      const text = await resp.text();
-      let json: any = null;
-      try { json = text ? JSON.parse(text) : {}; } catch { json = { rawText: text } }
-      attempts.push({ path, status: resp.status, ok: resp.ok, body: json || text });
-
-      if (resp.ok) {
         // Interpret status response
-        const paymentSuccess = !!(json?.success && json?.data && (json.data.state === "COMPLETED" || json.data.state === "SUCCESS"));
-        const newStatus = paymentSuccess ? "success" : "failed";
+        // Different PhonePe endpoints may place state in json.data.state
+        const paymentSuccess = !!(json?.success && json?.data && (json.data.state === "COMPLETED" || json.data.state === "SUCCESS" || json.data.state === "PAID"));
+        const newPaymentStatus = paymentSuccess ? "success" : "failed";
 
-        // Update payments table
-        const { error: updateError } = await supabase.from("payments").update({ status: newStatus }).eq("provider_payment_id", transactionId);
-        if (updateError) {
-          console.error("Failed to update payment status:", updateError);
+        // Update payments table first
+        try {
+          const { error: updateError } = await supabase.from("payments").update({ status: newPaymentStatus }).eq("provider_payment_id", transactionId);
+          if (updateError) {
+            console.error("Failed to update payments row:", updateError);
+          } else {
+            console.log("Updated payments row status ->", newPaymentStatus);
+          }
+        } catch (e) {
+          console.error("Exception updating payments row:", e);
         }
 
-        // If success, update order to paid
-        if (paymentSuccess) {
+        // Update orders table if we have an order id
+        if (!paymentOrderId && paymentRowRaw?.order_id) {
+          paymentOrderId = paymentRowRaw.order_id;
+        }
+
+        if (paymentOrderId) {
           try {
-            const { data: payment } = await supabase.from("payments").select("order_id").eq("provider_payment_id", transactionId).single().catch(()=>({ data: null }));
-            if (payment?.order_id) {
-              const { error: orderError } = await supabase.from("orders").update({ status: "paid" }).eq("id", payment.order_id);
-              if (orderError) console.error("Order update error:", orderError);
+            const orderNewStatus = paymentSuccess ? "paid" : "failed";
+            const { error: orderError } = await supabase.from("orders").update({ status: orderNewStatus }).eq("id", paymentOrderId);
+            if (orderError) {
+              console.error("Order update error:", orderError);
+            } else {
+              console.log("Order status updated to", orderNewStatus, "for order id:", paymentOrderId);
             }
           } catch (e) {
-            console.error("Order lookup/update error:", e);
+            console.error("Exception updating orders row:", e);
           }
+        } else {
+          console.warn("No order_id available on payments row; cannot update orders table automatically. paymentRow:", paymentRowRaw);
         }
 
-        return new Response(JSON.stringify({ success: paymentSuccess, status: paymentSuccess? "SUCCESS" : "FAILED", attempts }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
+        return new Response(JSON.stringify({
+          success: paymentSuccess,
+          status: paymentSuccess ? "SUCCESS" : "FAILED",
+          message: paymentSuccess ? "Payment verified and records updated" : "Payment not successful",
+          attempts
+        }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders }});
+      } catch (attemptErr: any) {
+        console.warn("Attempt error for path", path, attemptErr);
+        attempts.push({ path, error: String(attemptErr) });
+        // continue to next candidate
       }
     }
 
-    // None succeeded
+    // If none of the attempts were successful
     return new Response(JSON.stringify({ success: false, error: "PhonePe status check failed (all attempts)", attempts }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders }});
   } catch (err: any) {
     console.error("verify-payment fatal:", err);
