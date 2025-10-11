@@ -32,51 +32,39 @@ export const OrdersPage: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore()
   
   useEffect(() => {
-  if (!isAuthenticated || !user) return
-
-  let mounted = true
-
-  const fetchOrders = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            id,
-            quantity,
-            price,
-            products ( id, title, images )
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      if (mounted) setOrders(data || [])
-    } catch (err) {
-      console.error('Error fetching orders:', err)
-    } finally {
-      if (mounted) setLoading(false)
+    if (!isAuthenticated || !user) return
+    
+    const fetchOrders = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            order_items (
+              id,
+              quantity,
+              price,
+              products (
+                id,
+                title,
+                images
+              )
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+        
+        if (error) throw error
+        setOrders(data || [])
+      } catch (error) {
+        console.error('Error fetching orders:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
-
-  fetchOrders()
-
-  // subscribe to row changes for this user's orders
-  const channel = supabase
-    .channel(`orders-user-${user.id}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` }, () => {
-      fetchOrders().catch(() => {})
-    })
-    .subscribe()
-
-  return () => {
-    mounted = false
-    supabase.removeChannel?.(channel)
-  }
-}, [user, isAuthenticated])
-
+    
+    fetchOrders()
+  }, [user, isAuthenticated])
   
   const getStatusIcon = (status: string) => {
     switch (status) {

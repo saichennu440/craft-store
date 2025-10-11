@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
 import { useAuthStore } from '../../store/authStore'
 import toast from 'react-hot-toast'
+import { supabase } from '../../lib/supabase' // make sure you import your supabase client
 
 interface SignInForm {
   email: string
@@ -23,7 +24,7 @@ interface SignUpForm {
 export const AuthPage: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { signIn, signUp } = useAuthStore()
+  const { signIn } = useAuthStore() // we’ll call supabase directly for signUp
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/'
@@ -36,7 +37,6 @@ export const AuthPage: React.FC = () => {
     try {
       await signIn(data.email, data.password)
       toast.success('Signed in successfully!')
-      // Small delay to ensure auth state is updated
       setTimeout(() => {
         navigate(redirectTo)
       }, 100)
@@ -55,9 +55,20 @@ export const AuthPage: React.FC = () => {
     
     setLoading(true)
     try {
-      await signUp(data.email, data.password, data.fullName)
+      // ✅ Correct way: pass full_name in options.data
+      const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.fullName
+          }
+        }
+      })
+
+      if (error) throw error
+
       toast.success('Account created successfully!')
-      // Small delay to ensure auth state is updated
       setTimeout(() => {
         navigate(redirectTo)
       }, 100)
